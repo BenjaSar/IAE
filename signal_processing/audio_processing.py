@@ -6,6 +6,7 @@ import scipy
 from scipy import fftpack
 from scipy import signal
 
+
 audio_data = "/home/benjas/Documents/IoT/IAE/audios_recording_01b.wav"
 
 data_raw,  sample_rate = librosa.load(audio_data)
@@ -84,3 +85,7 @@ plt.plot(freqs_2K, power_2K)
 plt.ylabel('Power', fontsize=14)
 plt.xlabel('Frequency [Hz]', fontsize=14)
 plt.show()
+
+# Guardar el archivo de audio
+scaled = np.int16(data_filt_2k/np.max(np.abs(data_filt_2k))*32767)
+scipy.io.wavfile.write('filtered.wav', sample_rate, scaled)
