@@ -49,18 +49,19 @@ static void echo_task()
 
     // Configure a temporary buffer for the incoming data
     uint8_t *data = (uint8_t *) malloc(BUF_SIZE);
- 
 
     while (1) {
         // Read data from the UART
         int len = uart_read_bytes(uart_num, data, BUF_SIZE, 20 / portTICK_RATE_MS);
         // Write data back to the UART
         uart_write_bytes(uart_num, (const char *) data, len);
+       
     }
 }
 
 void app_main()
 {
+    printf("Esto es lo que se imprime: \n");
     xTaskCreate(echo_task, "uart_echo_task", 1024, NULL, 10, NULL);
     fflush(stdout);
 }

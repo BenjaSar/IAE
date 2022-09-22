@@ -1,40 +1,79 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import wave
-import sys
+import librosa
+import librosa.display
+import scipy
+from scipy import fftpack
+from scipy import signal
+import time
+import serial
 
 
-wave_obj = wave.open("/home/benjas/Documents/IoT/IAE/audios_recording_01b.wav", "rb")
+audio_data = "/home/benjas/Documents/IoT/IAE/audios_recording_01b.wav"
 
-#Samples frequency
-sample_freq = wave_obj.getframerate()
-print(sample_freq)
+data_raw,  sample_rate = librosa.load(audio_data)
+print(f'Sample frequency:{sample_rate} Hz')
 
-#Number samples
-n_samples =  wave_obj.getnframes()
-print(n_samples) 
+Ts = 1/sample_rate
+N = data_raw.shape[0]  # Numero de muestras
+t = np.arange(0, Ts*N, Ts)  # Vector de tiempos
 
-#Time of audio
-t_audio = n_samples/sample_freq
-print(t_audio)
+plt.figure(figsize=(14, 5))
+librosa.display.waveshow(data_raw, sr=sample_rate)
 
-#Number of channels
-n_channels = wave_obj.getnchannels()
-print(n_channels)
-
-#Signal wave
-signal_wave = wave_obj.readframes(n_samples)
-
-signal_array = np.frombuffer(signal_wave, dtype= np.int16)
-print(signal_array)
-
-#Time at which each sample is taken
-times =  np.linspace(0, n_samples/sample_freq, num = n_samples)
-#print(times)
-
-plt.figure(figsize =(15,5))
-plt.plot(times, signal_array)
-plt.ylabel('Signal value')
-plt.xlabel('Times (s)')
-plt.xlim(0, t_audio)
+data = data_raw.astype(np.float32)
 plt.show()
+
+# Normalization
+data = (data - data.min())
+data = data / (data.max() - data.min())
+data = 2 * (data - data.mean())
+
+# Fast Fourier Transforms
+# Sample rate generation
+sample_freq = fftpack.fftfreq(data.size, d=Ts)
+
+# Calculate the fft
+signal_fft = fftpack.fft(data)
+
+idx = np.where(sample_freq >= 0)
+
+freqs = sample_freq[idx]
+
+power = np.abs(signal_fft)[idx]
+
+plt.figure(figsize=(14, 5))
+plt.plot(freqs, power)
+plt.ylabel('Power', fontsize=14)
+plt.xlabel('Frequency [Hz]', fontsize=14)
+plt.show()
+
+# Filters
+# 4 KHZ
+
+# Nyquist frecuency
+f_nyq = sample_rate/2
+
+# Butterworth
+wp = 2000
+
+
+# wp band pass  [Hz] ws = band stop gpass = attenuation in pass band [dB] gstop = attenuation in stop band [dB]
+order, wn = scipy.signal.buttord(
+    wp=2000, ws=2500, gpass=3, gstop=40, analog=False, fs=sample_rate)
+
+# Filter design
+b, a = scipy.signal.butter(order, wn, btype='lowpass',
+                           analog=False, fs=sample_rate)
+
+# Signal filter
+data_filt_2k = scipy.signal.lfilter(b, a, data)
+
+print(data_filt_2k)
+
+try:
+    ser = serial.Serial('/dev/ttyUSB0', 115200, timeout=0)
+    print(ser.write(bytearray(data_filt_2k)))
+
+except:
+    print('Port open error')
